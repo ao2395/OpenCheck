@@ -22,3 +22,6 @@ pynput>=1.7.0
 # Utilities
 python-dotenv>=1.0.0
 tqdm>=4.65.0
+
+# Compression
+zstandard>=0.21.0
