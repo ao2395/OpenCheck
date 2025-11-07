@@ -1,6 +1,6 @@
 """
 Vision API integration for chess board recognition
-Supports both Claude Vision and OpenAI GPT-4 Vision
+Supports Claude Vision, OpenAI GPT-4 Vision, and Google Gemini Vision
 """
 
 import base64
@@ -200,36 +200,109 @@ Respond with just the FEN string."""
             return None
 
 
+class GeminiVision(VisionAPI):
+    """
+    Google Gemini Vision API for chess board recognition
+    """
+    def __init__(self, api_key=None):
+        super().__init__(api_key or os.getenv('GOOGLE_API_KEY'))
+        if not self.api_key:
+            raise ValueError("GOOGLE_API_KEY not found in environment")
+
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=self.api_key)
+            self.model = genai.GenerativeModel('gemini-1.5-flash')
+        except ImportError:
+            raise ImportError("Install google-generativeai: pip install google-generativeai")
+
+    def extract_fen(self, image):
+        """
+        Extract FEN notation using Gemini Vision
+
+        Args:
+            image: PIL.Image of chess board
+
+        Returns:
+            str: FEN notation
+        """
+        prompt = """Analyze this chess board image and provide the position in FEN (Forsyth-Edwards Notation).
+
+IMPORTANT: Respond with ONLY the FEN string, nothing else. No explanations, no additional text.
+
+The FEN format is: piece_placement active_color castling en_passant halfmove fullmove
+
+For piece placement:
+- Use uppercase for white pieces (PNBRQK) and lowercase for black (pnbrqk)
+- Numbers represent empty squares
+- Rows are separated by /
+- Start from rank 8 (top) to rank 1 (bottom)
+
+Example FEN: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+
+Respond with just the FEN string."""
+
+        try:
+            response = self.model.generate_content([prompt, image])
+
+            # Extract FEN from response
+            fen = response.text.strip()
+            return fen
+
+        except Exception as e:
+            print(f"Error calling Gemini Vision API: {e}")
+            return None
+
+
 class BoardRecognizer:
     """
     High-level interface for board recognition
     Automatically selects available vision API
     """
-    def __init__(self, prefer='claude'):
+    def __init__(self, prefer='gemini'):
         """
         Args:
-            prefer: 'claude' or 'openai' - which API to prefer if both available
+            prefer: 'gemini', 'claude', or 'openai' - which API to prefer if multiple available
         """
         self.vision_api = None
 
         # Try to initialize preferred API first
-        if prefer == 'claude':
+        if prefer == 'gemini':
+            try:
+                self.vision_api = GeminiVision()
+                print("Using Google Gemini Vision API for board recognition")
+            except:
+                pass
+        elif prefer == 'claude':
             try:
                 self.vision_api = ClaudeVision()
                 print("Using Claude Vision API for board recognition")
             except:
                 pass
-
-        if self.vision_api is None:
+        elif prefer == 'openai':
             try:
                 self.vision_api = OpenAIVision()
                 print("Using OpenAI Vision API for board recognition")
             except:
                 pass
 
+        # Fallback to any available API
+        if self.vision_api is None:
+            for api_class, api_name in [
+                (GeminiVision, "Google Gemini"),
+                (ClaudeVision, "Claude"),
+                (OpenAIVision, "OpenAI")
+            ]:
+                try:
+                    self.vision_api = api_class()
+                    print(f"Using {api_name} Vision API for board recognition")
+                    break
+                except:
+                    pass
+
         if self.vision_api is None:
             raise ValueError(
-                "No vision API available. Set ANTHROPIC_API_KEY or OPENAI_API_KEY"
+                "No vision API available. Set GOOGLE_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY"
             )
 
     def get_fen_from_image(self, image):

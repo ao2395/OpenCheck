@@ -47,11 +47,20 @@ pip install -r requirements.txt
 Create a `.env` file in the project root:
 
 ```bash
-# Use either Claude or OpenAI Vision API
+# Google Gemini (Recommended - Fast & Free tier available)
+GOOGLE_API_KEY=your_google_api_key_here
+
+# OR use Claude
 ANTHROPIC_API_KEY=your_anthropic_key_here
-# OR
+
+# OR use OpenAI
 OPENAI_API_KEY=your_openai_key_here
 ```
+
+**Get API Keys:**
+- **Gemini** (Recommended): https://makersuite.google.com/app/apikey - Free tier available!
+- **Claude**: https://console.anthropic.com/
+- **OpenAI**: https://platform.openai.com/
 
 ### 3. Train Your Model
 
@@ -127,13 +136,18 @@ Once you've trained your model and placed `chess_model.pth` in the `models/` dir
 python src/main.py
 
 # Custom options
-python src/main.py --interval 3.0 --vision-api openai
+python src/main.py --interval 3.0 --vision-api claude
 
 # Disable overlay (console only)
 python src/main.py --no-overlay
 
 # Use specific model file
 python src/main.py --model path/to/your/model.pth
+
+# Use different vision API
+python src/main.py --vision-api gemini  # Default
+python src/main.py --vision-api claude
+python src/main.py --vision-api openai
 ```
 
 #### Command-Line Options
@@ -143,7 +157,7 @@ python src/main.py --model path/to/your/model.pth
 --interval SECONDS    Capture interval in seconds (default: 2.0)
 --no-overlay         Disable GUI overlay
 --no-console         Disable console output
---vision-api API     Vision API: 'claude' or 'openai' (default: claude)
+--vision-api API     Vision API: 'gemini', 'claude', or 'openai' (default: gemini)
 --monitor NUM        Monitor number to capture (default: 1)
 ```
 
@@ -266,10 +280,20 @@ CONFIG = {
 ## How It Works (Step-by-Step)
 
 1. **Every 2 seconds** (configurable), OpenCheck captures your screen
-2. **Vision API** (Claude or GPT-4) analyzes the image and extracts the board position as FEN
+2. **Vision API** (Gemini, Claude, or GPT-4) analyzes the image and extracts the board position as FEN
 3. **Your trained model** predicts the best move based on the position
 4. **GUI overlay** displays the move suggestion on top of your browser
 5. **Console** shows detailed analysis with board visualization
+
+## Vision API Comparison
+
+| API | Speed | Cost | Quality | Free Tier |
+|-----|-------|------|---------|-----------|
+| **Gemini 1.5 Flash** | ⚡ Fastest | 💰 Cheapest | ✓ Excellent | ✓ Yes (60 RPM) |
+| Claude Sonnet | 🔸 Fast | 💰💰 Moderate | ✓ Excellent | Limited |
+| GPT-4 Vision | 🔸 Moderate | 💰💰💰 Expensive | ✓ Excellent | ✗ No |
+
+**Recommendation**: Use Gemini for best speed/cost ratio!
 
 ## Technical Details
 

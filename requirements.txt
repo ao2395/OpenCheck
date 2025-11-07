@@ -14,6 +14,7 @@ opencv-python>=4.8.0
 # Vision API
 anthropic>=0.25.0
 openai>=1.0.0
+google-generativeai>=0.3.0
 
 # GUI overlay
 tkinter-tooltip>=2.1.0

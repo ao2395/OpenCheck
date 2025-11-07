@@ -46,7 +46,7 @@ class OpenCheckApp:
             'overlay_alpha': 0.85,
             'overlay_position': (100, 100),
             'verbose': True,
-            'vision_api': 'claude',  # 'claude' or 'openai'
+            'vision_api': 'gemini',  # 'gemini', 'claude', or 'openai'
         }
 
         # Override with provided config
@@ -309,9 +309,9 @@ def main():
     parser.add_argument(
         '--vision-api',
         type=str,
-        choices=['claude', 'openai'],
-        default='claude',
-        help='Vision API to use (default: claude)'
+        choices=['gemini', 'claude', 'openai'],
+        default='gemini',
+        help='Vision API to use (default: gemini)'
     )
 
     parser.add_argument(
