@@ -1,0 +1,300 @@
+"""
+Vision API integration for chess board recognition
+Supports both Claude Vision and OpenAI GPT-4 Vision
+"""
+
+import base64
+import io
+from PIL import Image
+import os
+
+
+class VisionAPI:
+    """
+    Base class for vision APIs
+    """
+    def __init__(self, api_key=None):
+        self.api_key = api_key
+
+    def image_to_base64(self, image):
+        """
+        Convert PIL Image to base64 string
+
+        Args:
+            image: PIL.Image
+
+        Returns:
+            str: Base64 encoded image
+        """
+        buffered = io.BytesIO()
+        image.save(buffered, format="PNG")
+        img_str = base64.b64encode(buffered.getvalue()).decode()
+        return img_str
+
+    def extract_fen(self, image):
+        """
+        Extract FEN notation from chess board image
+        Must be implemented by subclass
+
+        Args:
+            image: PIL.Image of chess board
+
+        Returns:
+            str: FEN notation of the position
+        """
+        raise NotImplementedError
+
+
+class ClaudeVision(VisionAPI):
+    """
+    Claude Vision API for chess board recognition
+    """
+    def __init__(self, api_key=None):
+        super().__init__(api_key or os.getenv('ANTHROPIC_API_KEY'))
+        if not self.api_key:
+            raise ValueError("ANTHROPIC_API_KEY not found in environment")
+
+        try:
+            import anthropic
+            self.client = anthropic.Anthropic(api_key=self.api_key)
+        except ImportError:
+            raise ImportError("Install anthropic: pip install anthropic")
+
+    def extract_fen(self, image):
+        """
+        Extract FEN notation using Claude Vision
+
+        Args:
+            image: PIL.Image of chess board
+
+        Returns:
+            str: FEN notation
+        """
+        # Convert image to base64
+        img_base64 = self.image_to_base64(image)
+
+        # Create prompt for chess board recognition
+        prompt = """Analyze this chess board image and provide the position in FEN (Forsyth-Edwards Notation).
+
+IMPORTANT: Respond with ONLY the FEN string, nothing else. No explanations, no additional text.
+
+The FEN format is: piece_placement active_color castling en_passant halfmove fullmove
+
+For piece placement:
+- Use uppercase for white pieces (PNBRQK) and lowercase for black (pnbrqk)
+- Numbers represent empty squares
+- Rows are separated by /
+- Start from rank 8 (top) to rank 1 (bottom)
+
+Example FEN: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+
+Respond with just the FEN string."""
+
+        try:
+            response = self.client.messages.create(
+                model="claude-3-5-sonnet-20241022",
+                max_tokens=200,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": "image/png",
+                                    "data": img_base64,
+                                },
+                            },
+                            {
+                                "type": "text",
+                                "text": prompt
+                            }
+                        ],
+                    }
+                ],
+            )
+
+            # Extract FEN from response
+            fen = response.content[0].text.strip()
+            return fen
+
+        except Exception as e:
+            print(f"Error calling Claude Vision API: {e}")
+            return None
+
+
+class OpenAIVision(VisionAPI):
+    """
+    OpenAI GPT-4 Vision API for chess board recognition
+    """
+    def __init__(self, api_key=None):
+        super().__init__(api_key or os.getenv('OPENAI_API_KEY'))
+        if not self.api_key:
+            raise ValueError("OPENAI_API_KEY not found in environment")
+
+        try:
+            import openai
+            self.client = openai.OpenAI(api_key=self.api_key)
+        except ImportError:
+            raise ImportError("Install openai: pip install openai")
+
+    def extract_fen(self, image):
+        """
+        Extract FEN notation using GPT-4 Vision
+
+        Args:
+            image: PIL.Image of chess board
+
+        Returns:
+            str: FEN notation
+        """
+        # Convert image to base64
+        img_base64 = self.image_to_base64(image)
+
+        prompt = """Analyze this chess board image and provide the position in FEN (Forsyth-Edwards Notation).
+
+IMPORTANT: Respond with ONLY the FEN string, nothing else. No explanations, no additional text.
+
+The FEN format is: piece_placement active_color castling en_passant halfmove fullmove
+
+For piece placement:
+- Use uppercase for white pieces (PNBRQK) and lowercase for black (pnbrqk)
+- Numbers represent empty squares
+- Rows are separated by /
+- Start from rank 8 (top) to rank 1 (bottom)
+
+Example FEN: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+
+Respond with just the FEN string."""
+
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-4-vision-preview",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": prompt
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/png;base64,{img_base64}"
+                                }
+                            }
+                        ]
+                    }
+                ],
+                max_tokens=200
+            )
+
+            # Extract FEN from response
+            fen = response.choices[0].message.content.strip()
+            return fen
+
+        except Exception as e:
+            print(f"Error calling OpenAI Vision API: {e}")
+            return None
+
+
+class BoardRecognizer:
+    """
+    High-level interface for board recognition
+    Automatically selects available vision API
+    """
+    def __init__(self, prefer='claude'):
+        """
+        Args:
+            prefer: 'claude' or 'openai' - which API to prefer if both available
+        """
+        self.vision_api = None
+
+        # Try to initialize preferred API first
+        if prefer == 'claude':
+            try:
+                self.vision_api = ClaudeVision()
+                print("Using Claude Vision API for board recognition")
+            except:
+                pass
+
+        if self.vision_api is None:
+            try:
+                self.vision_api = OpenAIVision()
+                print("Using OpenAI Vision API for board recognition")
+            except:
+                pass
+
+        if self.vision_api is None:
+            raise ValueError(
+                "No vision API available. Set ANTHROPIC_API_KEY or OPENAI_API_KEY"
+            )
+
+    def get_fen_from_image(self, image):
+        """
+        Extract FEN notation from chess board image
+
+        Args:
+            image: PIL.Image of chess board
+
+        Returns:
+            str: FEN notation, or None if recognition failed
+        """
+        try:
+            fen = self.vision_api.extract_fen(image)
+
+            # Basic validation
+            if fen and len(fen) > 15:  # Minimum valid FEN length
+                return fen
+            else:
+                print(f"Invalid FEN received: {fen}")
+                return None
+
+        except Exception as e:
+            print(f"Error in board recognition: {e}")
+            return None
+
+
+# Example usage
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) < 2:
+        print("Usage: python vision_api.py <image_path>")
+        sys.exit(1)
+
+    image_path = sys.argv[1]
+
+    # Load image
+    try:
+        img = Image.open(image_path)
+        print(f"Loaded image: {image_path}")
+    except Exception as e:
+        print(f"Error loading image: {e}")
+        sys.exit(1)
+
+    # Test board recognition
+    try:
+        recognizer = BoardRecognizer(prefer='claude')
+        print("\nExtracting FEN notation...")
+
+        fen = recognizer.get_fen_from_image(img)
+
+        if fen:
+            print(f"\nExtracted FEN: {fen}")
+
+            # Validate with python-chess
+            try:
+                import chess
+                board = chess.Board(fen)
+                print(f"\n✓ FEN is valid!")
+                print(f"\nBoard:\n{board}")
+            except Exception as e:
+                print(f"\n✗ Invalid FEN: {e}")
+        else:
+            print("\n✗ Failed to extract FEN")
+
+    except Exception as e:
+        print(f"Error: {e}")

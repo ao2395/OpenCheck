@@ -1,0 +1,24 @@
+# Core dependencies
+torch>=2.0.0
+torchvision>=0.15.0
+numpy>=1.24.0
+python-chess>=1.9.0
+
+# Screenshot capture
+mss>=9.0.0
+pillow>=10.0.0
+
+# Computer vision
+opencv-python>=4.8.0
+
+# Vision API
+anthropic>=0.25.0
+openai>=1.0.0
+
+# GUI overlay
+tkinter-tooltip>=2.1.0
+pynput>=1.7.0
+
+# Utilities
+python-dotenv>=1.0.0
+tqdm>=4.65.0
