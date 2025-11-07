@@ -17,6 +17,7 @@ Screenshot Capture → Board Recognition (Vision API) → FEN → Move Predictio
 ```
 OpenCheck/
 ├── src/
+│   ├── main.py                    # Main application entry point
 │   ├── capture/
 │   │   └── screenshot.py          # Real-time screen capture
 │   ├── recognition/
@@ -24,8 +25,8 @@ OpenCheck/
 │   ├── engine/
 │   │   └── model.py               # Custom move prediction model inference
 │   └── ui/
-│       ├── overlay.py             # GUI overlay (TODO)
-│       └── console.py             # Console output (TODO)
+│       ├── overlay.py             # GUI overlay
+│       └── console.py             # Console output
 ├── models/
 │   └── chess_model.pth            # Your trained model (place here after training)
 ├── chess_model_training.ipynb     # Training notebook for Google Colab
@@ -117,7 +118,59 @@ Inspired by AlphaZero architecture but trained on engine evaluations.
 
 ## Usage
 
-### Test Model Inference
+### Running OpenCheck
+
+Once you've trained your model and placed `chess_model.pth` in the `models/` directory:
+
+```bash
+# Run with default settings
+python src/main.py
+
+# Custom options
+python src/main.py --interval 3.0 --vision-api openai
+
+# Disable overlay (console only)
+python src/main.py --no-overlay
+
+# Use specific model file
+python src/main.py --model path/to/your/model.pth
+```
+
+#### Command-Line Options
+
+```
+--model PATH          Path to trained model (default: models/chess_model.pth)
+--interval SECONDS    Capture interval in seconds (default: 2.0)
+--no-overlay         Disable GUI overlay
+--no-console         Disable console output
+--vision-api API     Vision API: 'claude' or 'openai' (default: claude)
+--monitor NUM        Monitor number to capture (default: 1)
+```
+
+#### Using the Overlay
+
+- **F9**: Toggle overlay visibility
+- **Drag**: Click and drag the title bar to reposition
+- **X Button**: Hide overlay
+- **Always on Top**: Overlay stays above all windows
+
+The overlay displays:
+- Best move in UCI format (e.g., "e2e4")
+- Standard chess notation (e.g., "e4" or "Nf3")
+- Move visualization (from → to)
+- Model confidence percentage
+
+#### Console Output
+
+Real-time analysis is printed to console with:
+- Colored output for better readability
+- Move details in UCI and SAN notation
+- ASCII chess board visualization
+- Timestamps and status messages
+
+### Testing Components
+
+#### Test Model Inference
 
 ```python
 from src.engine.model import ChessEngine
@@ -192,18 +245,31 @@ CONFIG = {
 - ✅ Vision API integration (Claude/OpenAI)
 - ✅ Model architecture & training notebook
 - ✅ Model inference engine
-- ⏳ GUI overlay (pending)
-- ⏳ Console output (pending)
-- ⏳ Main real-time pipeline (pending)
+- ✅ GUI overlay
+- ✅ Console output
+- ✅ Main real-time pipeline
+- ⏳ Board position detection (uses full screen - could be optimized)
 
 ## Next Steps
 
 1. **Train your model** on Google Colab with your dataset
-2. **Download chess_model.pth** and place in `models/`
-3. **Test the model** with sample positions
-4. **Implement GUI overlay** for displaying moves on screen
-5. **Build main pipeline** to connect all components
-6. **Test on live chess.com games**
+   - Decompress your `.zst` file: `zstd -d your_dataset.json.zst`
+   - Upload notebook and dataset to Colab
+   - Update `dataset_path` in config
+   - Run all cells and wait for training to complete
+2. **Download chess_model.pth** and place in `models/` directory
+3. **Set up API keys** in `.env` file (Claude or OpenAI)
+4. **Run the application**: `python src/main.py`
+5. **Open chess.com** and start a game
+6. **Watch the magic happen!** The overlay will show suggested moves
+
+## How It Works (Step-by-Step)
+
+1. **Every 2 seconds** (configurable), OpenCheck captures your screen
+2. **Vision API** (Claude or GPT-4) analyzes the image and extracts the board position as FEN
+3. **Your trained model** predicts the best move based on the position
+4. **GUI overlay** displays the move suggestion on top of your browser
+5. **Console** shows detailed analysis with board visualization
 
 ## Technical Details
 
