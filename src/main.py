@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from capture.screenshot import ScreenCapture
 from recognition.vision_api import BoardRecognizer
 from recognition.template_matcher import TemplateMatcher
+from recognition.html_scraper import ChessComScraper
 from engine.model import ChessEngine
 from ui.overlay import MoveOverlay
 from ui.console import ConsoleOutput
@@ -51,6 +52,7 @@ class OpenCheckApp:
             'verbose': True,
             'vision_api': 'gemini',  # 'gemini', 'claude', or 'openai'
             'use_templates': False,  # Use template matching instead of vision API
+            'use_html': False,  # Use HTML scraping (100% accurate!)
             'templates_dir': 'templates',
             'board_config': 'board_config.json',  # Board calibration config
         }
@@ -89,9 +91,16 @@ class OpenCheckApp:
                 monitor_number=self.config['monitor_number']
             )
 
-            # Board recognizer (Template Matching or Vision API)
+            # Board recognizer (HTML Scraping, Template Matching, or Vision API)
             self._log("Initializing board recognizer...", 'info')
-            if self.config['use_templates']:
+            if self.config['use_html']:
+                self._log("Using HTML scraping for board recognition (100% accurate!)", 'info')
+                self.board_recognizer = ChessComScraper(headless=False)
+                if not self.board_recognizer.start_browser():
+                    self._log("Failed to start browser for HTML scraping", 'error')
+                    return False
+                self._log("Browser started - navigate to chess.com/play", 'info')
+            elif self.config['use_templates']:
                 self._log("Using template matching for board recognition", 'info')
                 self.board_recognizer = TemplateMatcher(
                     templates_dir=self.config['templates_dir'],
@@ -396,6 +405,12 @@ def main():
     )
 
     parser.add_argument(
+        '--use-html',
+        action='store_true',
+        help='Use HTML scraping from chess.com (100%% accurate, requires browser)'
+    )
+
+    parser.add_argument(
         '--templates-dir',
         type=str,
         default='templates',
@@ -422,6 +437,7 @@ def main():
         'save_screenshots': args.save_screenshots,
         'vision_attempts': args.vision_attempts,
         'use_templates': args.use_templates,
+        'use_html': args.use_html,
         'templates_dir': args.templates_dir,
         'board_config': args.board_config,
     }

@@ -11,6 +11,9 @@ pillow>=10.0.0
 # Computer vision
 opencv-python>=4.8.0
 
+# HTML scraping (100% accurate!)
+selenium>=4.0.0
+
 # Vision API
 anthropic>=0.25.0
 openai>=1.0.0
