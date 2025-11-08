@@ -43,16 +43,16 @@ class MoveOverlay:
         # Position
         self.root.geometry(f"+{position[0]}+{position[1]}")
 
+        # Visibility toggle
+        self.visible = True
+        self.root.bind('<F9>', self.toggle_visibility)
+
         # Keep window on top - re-assert every 100ms
         self._keep_on_top()
 
         # Draggable window
         self.root.bind('<Button-1>', self.start_drag)
         self.root.bind('<B1-Motion>', self.drag_window)
-
-        # Visibility toggle
-        self.visible = True
-        self.root.bind('<F9>', self.toggle_visibility)
 
         # Create UI
         self._create_ui()
