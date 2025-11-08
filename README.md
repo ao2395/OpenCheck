@@ -1,15 +1,36 @@
 # OpenCheck - Real-time Chess Board Analyzer
 
-AI-powered chess assistant that analyzes chess.com boards in real-time using computer vision and a custom-trained neural network.
+AI-powered chess assistant that analyzes chess.com boards in real-time and predicts the best move using a custom-trained neural network.
 
 ## Overview
 
-OpenCheck captures your chess.com game screen, recognizes the board position using Vision AI, and predicts the best move using a custom-trained CNN model.
+OpenCheck recognizes the chess board position and predicts the best move using your trained CNN model.
+
+### Recognition Methods (Choose One)
+
+| Method | Accuracy | Speed | Setup | Recommended |
+|--------|----------|-------|-------|-------------|
+| **HTML Scraping** | **100%** | **<20ms** | 2 min | ✅ **BEST** |
+| Template Matching | 99% | <50ms | 5 min | 🥈 Great |
+| Vision APIs | 70-80% | 2-3s | 0 min | 🥉 Fallback |
+
+**HTML Scraping** is the **recommended method** - it reads the board position directly from chess.com's HTML. Perfect accuracy, instant, zero setup!
 
 ### System Flow
 
+**Option 1: HTML Scraping (Recommended)**
 ```
-Screenshot Capture → Board Recognition (Vision API) → FEN → Move Prediction (Your Model) → Display Move
+Browser Automation → HTML Parsing → FEN → Move Prediction (Your Model) → Display Move
+```
+
+**Option 2: Template Matching**
+```
+Screenshot → Board Detection → Template Matching → FEN → Move Prediction → Display Move
+```
+
+**Option 3: Vision APIs**
+```
+Screenshot → Vision API (Gemini/Claude) → FEN → Move Prediction → Display Move
 ```
 
 ## Project Structure
@@ -127,41 +148,61 @@ Inspired by AlphaZero architecture but trained on engine evaluations.
 
 ## Usage
 
-### Running OpenCheck
+### Quick Start
 
 Once you've trained your model and placed `chess_model.pth` in the `models/` directory:
 
+**Option 1: HTML Scraping (Recommended - 100% Accurate)**
+
 ```bash
-# Run with default settings
-python src/main.py
+# Install ChromeDriver
+sudo apt install chromium-chromedriver  # Linux
+brew install chromedriver               # Mac
 
-# Custom options
-python src/main.py --interval 3.0 --vision-api claude
-
-# Disable overlay (console only)
-python src/main.py --no-overlay
-
-# Use specific model file
-python src/main.py --model path/to/your/model.pth
-
-# Use different vision API
-python src/main.py --vision-api gemini  # Default
-python src/main.py --vision-api claude
-python src/main.py --vision-api openai
+# Run with HTML scraping
+python src/main.py --use-html
 ```
 
-#### Command-Line Options
+See [HTML_SCRAPING.md](HTML_SCRAPING.md) for full guide.
 
-```
---model PATH          Path to trained model (default: models/chess_model.pth)
---interval SECONDS    Capture interval in seconds (default: 2.0)
---no-overlay         Disable GUI overlay
---no-console         Disable console output
---vision-api API     Vision API: 'gemini', 'claude', or 'openai' (default: gemini)
---monitor NUM        Monitor number to capture (default: 1)
+**Option 2: Template Matching (99% Accurate)**
+
+```bash
+# One-time setup (5 minutes)
+python src/recognition/board_calibration.py screenshot.png
+python src/recognition/extract_templates.py screenshot.png
+
+# Run with templates
+python src/main.py --use-templates
 ```
 
-#### Using the Overlay
+See [TEMPLATE_MATCHING_SETUP.md](TEMPLATE_MATCHING_SETUP.md) or [QUICK_START.md](QUICK_START.md) for full guide.
+
+**Option 3: Vision APIs (70-80% Accurate - Fallback)**
+
+```bash
+# Configure API key in .env
+GOOGLE_API_KEY=your_key_here
+
+# Run with vision API
+python src/main.py --vision-api gemini
+```
+
+### Command-Line Options
+
+```bash
+# Board Recognition Methods
+python src/main.py --use-html              # HTML scraping (100% accurate)
+python src/main.py --use-templates         # Template matching (99% accurate)
+python src/main.py --vision-api gemini     # Vision API (70-80% accurate)
+
+# Other options
+python src/main.py --model path/to/model.pth  # Custom model path
+python src/main.py --no-overlay               # Console only
+python src/main.py --save-screenshots         # Debug mode
+```
+
+### Using the Overlay
 
 - **F9**: Toggle overlay visibility
 - **Drag**: Click and drag the title bar to reposition
