@@ -6,6 +6,7 @@ Transparent, always-on-top window that shows the best move
 import tkinter as tk
 from tkinter import ttk
 import chess
+import sys
 
 
 class MoveOverlay:
@@ -26,8 +27,24 @@ class MoveOverlay:
         self.root.attributes('-topmost', True)  # Always on top
         self.root.overrideredirect(True)  # Remove window decorations
 
+        # Platform-specific: Stay above fullscreen windows
+        if sys.platform.startswith('linux'):
+            try:
+                # Set window type to dock/utility to stay above fullscreen
+                # Alternative types: 'dock', 'toolbar', 'splash', 'utility'
+                self.root.attributes('-type', 'dock')
+            except:
+                try:
+                    # Fallback: try utility type
+                    self.root.attributes('-type', 'utility')
+                except:
+                    pass
+
         # Position
         self.root.geometry(f"+{position[0]}+{position[1]}")
+
+        # Keep window on top - re-assert every 100ms
+        self._keep_on_top()
 
         # Draggable window
         self.root.bind('<Button-1>', self.start_drag)
@@ -160,6 +177,14 @@ class MoveOverlay:
             fg='#7f8c8d'
         )
         help_label.pack(pady=(5, 0))
+
+    def _keep_on_top(self):
+        """Periodically re-assert topmost to stay above fullscreen windows"""
+        if self.visible:
+            self.root.lift()  # Raise window to top
+            self.root.attributes('-topmost', True)
+        # Re-run every 100ms
+        self.root.after(100, self._keep_on_top)
 
     def start_drag(self, event):
         """Start dragging the window"""
