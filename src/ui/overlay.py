@@ -134,15 +134,32 @@ class MoveOverlay:
         )
         self.confidence_label.pack()
 
+        # Capture button
+        self.capture_btn = tk.Button(
+            content_frame,
+            text="📷 Analyze Position",
+            font=('Arial', 11, 'bold'),
+            bg='#3498db',
+            fg='white',
+            activebackground='#2980b9',
+            activeforeground='white',
+            cursor='hand2',
+            relief='raised',
+            bd=2,
+            padx=15,
+            pady=8
+        )
+        self.capture_btn.pack(pady=(10, 5))
+
         # Status/help text
         help_label = tk.Label(
             content_frame,
-            text="F9: Toggle | Drag to move",
+            text="F9: Toggle | Drag to move | Click button to analyze",
             font=('Arial', 8),
             bg='#2c3e50',
             fg='#7f8c8d'
         )
-        help_label.pack(pady=(10, 0))
+        help_label.pack(pady=(5, 0))
 
     def start_drag(self, event):
         """Start dragging the window"""
@@ -280,9 +297,18 @@ class MoveOverlay:
     def show_waiting(self):
         """Display waiting state"""
         self.move_label.config(text="♟ Waiting...", fg='#95a5a6')
-        self.notation_label.config(text="Start a game on chess.com")
+        self.notation_label.config(text="Click 'Analyze Position' to start")
         self.eval_label.config(text="")
         self.confidence_label.config(text="")
+
+    def set_capture_callback(self, callback):
+        """
+        Set the callback function for the capture button
+
+        Args:
+            callback: Function to call when capture button is clicked
+        """
+        self.capture_btn.config(command=callback)
 
     def run(self):
         """Start the overlay (blocking)"""

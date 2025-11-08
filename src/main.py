@@ -63,7 +63,6 @@ class OpenCheckApp:
         # State
         self.running = False
         self.last_fen = None
-        self.analysis_thread = None
 
     def initialize(self):
         """Initialize all components"""
@@ -213,15 +212,10 @@ class OpenCheckApp:
             if self.overlay:
                 self.overlay.show_error(str(e))
 
-    def analysis_loop(self):
-        """Background thread for continuous analysis"""
-        while self.running:
-            try:
-                self.analyze_position()
-                time.sleep(self.config['capture_interval'])
-            except Exception as e:
-                self._log(f"Error in analysis loop: {e}", 'error')
-                time.sleep(self.config['capture_interval'])
+    def trigger_analysis(self):
+        """Manually trigger a single analysis (called by button press)"""
+        # Run in a separate thread to avoid blocking the UI
+        threading.Thread(target=self.analyze_position, daemon=True).start()
 
     def run(self):
         """Start the application"""
@@ -230,22 +224,16 @@ class OpenCheckApp:
             return
 
         self._log("Starting OpenCheck...", 'success')
-        self._log(
-            f"Analyzing every {self.config['capture_interval']} seconds",
-            'info'
-        )
+        self._log("Click 'Analyze Position' button to capture and analyze", 'info')
 
         if self.console:
             self.console.print_separator()
             self.console.print_waiting()
 
-        # Start analysis loop in background thread
+        # Connect overlay button to trigger analysis
         self.running = True
-        self.analysis_thread = threading.Thread(
-            target=self.analysis_loop,
-            daemon=True
-        )
-        self.analysis_thread.start()
+        if self.overlay:
+            self.overlay.set_capture_callback(self.trigger_analysis)
 
         try:
             if self.overlay:
@@ -253,6 +241,7 @@ class OpenCheckApp:
                 self.overlay.run()
             else:
                 # No overlay, just keep running
+                self._log("Warning: No overlay available. Use Ctrl+C to exit.", 'warning')
                 while self.running:
                     time.sleep(0.1)
 
@@ -264,9 +253,6 @@ class OpenCheckApp:
     def stop(self):
         """Stop the application"""
         self.running = False
-
-        if self.analysis_thread:
-            self.analysis_thread.join(timeout=2.0)
 
         if self.overlay:
             self.overlay.destroy()
@@ -291,7 +277,7 @@ def main():
         '--interval',
         type=float,
         default=2.0,
-        help='Capture interval in seconds (default: 2.0)'
+        help='(Deprecated - manual capture only) Capture interval in seconds'
     )
 
     parser.add_argument(
