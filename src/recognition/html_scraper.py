@@ -99,25 +99,37 @@ class ChessComScraper:
             import time
             overall_start = time.time()
 
-            # Wait for at least one piece element to be present (with short timeout)
-            print("[DEBUG] Waiting for piece elements to be present...")
-            wait_start = time.time()
-            try:
-                WebDriverWait(self.driver, 2).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, 'div.piece'))
-                )
-                wait_elapsed = time.time() - wait_start
-                print(f"[DEBUG] Wait completed in {wait_elapsed:.3f}s")
-            except Exception as e:
-                wait_elapsed = time.time() - wait_start
-                print(f"[DEBUG] Wait timed out after {wait_elapsed:.3f}s: {e}")
-
-            # Find all piece elements
+            # Find all piece elements directly (no wait - should be instant if page is loaded)
             find_start = time.time()
             print("[DEBUG] Finding piece elements...")
             pieces = self.driver.find_elements(By.CSS_SELECTOR, 'div.piece')
             find_elapsed = time.time() - find_start
             print(f"[DEBUG] Found {len(pieces)} pieces in {find_elapsed:.3f}s")
+
+            # If no pieces found, try alternative selectors or report error
+            if len(pieces) == 0:
+                print("[DEBUG] No pieces found! Checking page state...")
+                print(f"[DEBUG] Current URL: {self.driver.current_url}")
+                print(f"[DEBUG] Page title: {self.driver.title}")
+
+                # Try alternative selectors chess.com might use
+                alt_selectors = [
+                    'div[class*="piece"]',
+                    '.piece',
+                    '[class^="piece-"]',
+                ]
+
+                for selector in alt_selectors:
+                    alt_pieces = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                    if alt_pieces:
+                        print(f"[DEBUG] Found {len(alt_pieces)} pieces with selector: {selector}")
+                        pieces = alt_pieces
+                        break
+
+                if len(pieces) == 0:
+                    print("[ERROR] Could not find any piece elements on the page!")
+                    print("[ERROR] Chess.com may have changed their HTML structure")
+                    return None
 
             # Parse pieces into board representation
             parse_start = time.time()
