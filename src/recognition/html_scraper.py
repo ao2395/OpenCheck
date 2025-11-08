@@ -150,15 +150,21 @@ class ChessComScraper:
             import time
             overall_start = time.time()
 
-            # Save HTML for debugging
+            # Save HTML for debugging (with timeout to prevent hanging)
             if save_html:
                 try:
-                    html = self.driver.page_source
+                    print("[DEBUG] Getting page source...")
+                    html = timeout_wrapper(
+                        lambda: self.driver.page_source,
+                        timeout_duration=2
+                    )
                     timestamp = time.strftime("%Y%m%d-%H%M%S")
                     filename = f"debug_html_{timestamp}.html"
                     with open(filename, 'w', encoding='utf-8') as f:
                         f.write(html)
                     print(f"[DEBUG] Saved HTML to {filename}")
+                except TimeoutError:
+                    print(f"[DEBUG] page_source timed out after 2s - skipping HTML save")
                 except Exception as e:
                     print(f"[DEBUG] Could not save HTML: {e}")
 
