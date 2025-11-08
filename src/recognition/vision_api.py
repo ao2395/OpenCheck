@@ -5,7 +5,7 @@ Supports Claude Vision, OpenAI GPT-4 Vision, and Google Gemini Vision
 
 import base64
 import io
-from PIL import Image
+from PIL import Image, ImageEnhance
 import os
 
 
@@ -272,12 +272,14 @@ class BoardRecognizer:
     High-level interface for board recognition
     Automatically selects available vision API
     """
-    def __init__(self, prefer='gemini'):
+    def __init__(self, prefer='gemini', preprocess=True):
         """
         Args:
             prefer: 'gemini', 'claude', or 'openai' - which API to prefer if multiple available
+            preprocess: Whether to preprocess images for better recognition
         """
         self.vision_api = None
+        self.preprocess = preprocess
 
         # Try to initialize preferred API first
         if prefer == 'gemini':
@@ -318,6 +320,30 @@ class BoardRecognizer:
                 "No vision API available. Set GOOGLE_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY"
             )
 
+    def _preprocess_image(self, image):
+        """
+        Preprocess image to improve recognition accuracy
+
+        Args:
+            image: PIL.Image
+
+        Returns:
+            PIL.Image: Processed image
+        """
+        # Increase sharpness
+        enhancer = ImageEnhance.Sharpness(image)
+        image = enhancer.enhance(2.0)
+
+        # Increase contrast
+        enhancer = ImageEnhance.Contrast(image)
+        image = enhancer.enhance(1.5)
+
+        # Increase brightness slightly
+        enhancer = ImageEnhance.Brightness(image)
+        image = enhancer.enhance(1.1)
+
+        return image
+
     def get_fen_from_image(self, image, num_attempts=1):
         """
         Extract FEN notation from chess board image
@@ -329,6 +355,10 @@ class BoardRecognizer:
         Returns:
             str: FEN notation, or None if recognition failed
         """
+        # Preprocess image if enabled
+        if self.preprocess:
+            image = self._preprocess_image(image)
+
         if num_attempts == 1:
             fen = self.vision_api.extract_fen(image)
         else:
