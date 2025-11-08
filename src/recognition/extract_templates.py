@@ -11,13 +11,14 @@ from pathlib import Path
 import sys
 
 
-def extract_templates_from_starting_position(screenshot_path, output_dir='templates'):
+def extract_templates_from_starting_position(screenshot_path, output_dir='templates', config_file='board_config.json'):
     """
     Extract piece templates from a screenshot of the starting position
 
     Args:
         screenshot_path: Path to screenshot showing starting position
         output_dir: Directory to save templates
+        config_file: Path to board calibration config (optional)
     """
     # Create output directory
     output_path = Path(output_dir)
@@ -34,11 +35,23 @@ def extract_templates_from_starting_position(screenshot_path, output_dir='templa
     # Convert to RGB
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-    # Detect board region
-    board_region = detect_board_region(img)
-    x, y, w, h = board_region
+    # Try to load board region from config first
+    config_path = Path(config_file)
+    if config_path.exists():
+        import json
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        region = config['region']
+        board_region = (region['x'], region['y'], region['width'], region['height'])
+        print(f"✓ Using calibrated board region from {config_file}")
+        x, y, w, h = board_region
+    else:
+        # Detect board region automatically
+        board_region = detect_board_region(img)
+        x, y, w, h = board_region
+        print(f"⚠ No calibration found, using auto-detection")
 
-    print(f"Detected board region: x={x}, y={y}, w={w}, h={h}")
+    print(f"Board region: x={x}, y={y}, w={w}, h={h}")
 
     # Extract board
     board = img_rgb[y:y+h, x:x+w]

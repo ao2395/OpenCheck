@@ -17,14 +17,16 @@ class TemplateMatcher:
     Perfect for consistent board positions
     """
 
-    def __init__(self, templates_dir='templates'):
+    def __init__(self, templates_dir='templates', config_file='board_config.json'):
         """
         Initialize template matcher
 
         Args:
             templates_dir: Directory containing piece template images
+            config_file: Path to board calibration config (optional)
         """
         self.templates_dir = Path(templates_dir)
+        self.config_file = Path(config_file)
         self.templates = {}
         self.piece_map = {
             'white_pawn': 'P', 'white_knight': 'N', 'white_bishop': 'B',
@@ -34,7 +36,11 @@ class TemplateMatcher:
         }
 
         # Board detection parameters (chess.com specific)
-        self.board_region = None  # Will be auto-detected or manually set
+        self.board_region = None  # Will be loaded from config or auto-detected
+        self.board_config = None
+
+        # Load board calibration if available
+        self._load_board_config()
 
         # Load templates if directory exists
         if self.templates_dir.exists():
@@ -42,6 +48,24 @@ class TemplateMatcher:
         else:
             print(f"Warning: Templates directory '{templates_dir}' not found")
             print("Run extract_templates.py first to create templates")
+
+    def _load_board_config(self):
+        """Load board calibration configuration"""
+        if self.config_file.exists():
+            import json
+            with open(self.config_file, 'r') as f:
+                self.board_config = json.load(f)
+
+            region = self.board_config['region']
+            self.board_region = (region['x'], region['y'], region['width'], region['height'])
+
+            print(f"✓ Loaded board calibration from {self.config_file}")
+            print(f"  Region: x={region['x']}, y={region['y']}, "
+                  f"w={region['width']}, h={region['height']}")
+        else:
+            print(f"⚠ No board calibration found at {self.config_file}")
+            print("  Will use automatic detection (less accurate)")
+            print("  Run: python src/recognition/board_calibration.py screenshot.png")
 
     def _load_templates(self):
         """Load all piece templates from disk"""

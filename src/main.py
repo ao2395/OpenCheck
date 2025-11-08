@@ -52,6 +52,7 @@ class OpenCheckApp:
             'vision_api': 'gemini',  # 'gemini', 'claude', or 'openai'
             'use_templates': False,  # Use template matching instead of vision API
             'templates_dir': 'templates',
+            'board_config': 'board_config.json',  # Board calibration config
         }
 
         # Override with provided config
@@ -93,7 +94,8 @@ class OpenCheckApp:
             if self.config['use_templates']:
                 self._log("Using template matching for board recognition", 'info')
                 self.board_recognizer = TemplateMatcher(
-                    templates_dir=self.config['templates_dir']
+                    templates_dir=self.config['templates_dir'],
+                    config_file=self.config['board_config']
                 )
             else:
                 self._log(f"Using {self.config['vision_api']} vision API for board recognition", 'info')
@@ -400,6 +402,13 @@ def main():
         help='Directory containing piece templates (default: templates/)'
     )
 
+    parser.add_argument(
+        '--board-config',
+        type=str,
+        default='board_config.json',
+        help='Board calibration config file (default: board_config.json)'
+    )
+
     args = parser.parse_args()
 
     # Build config from args
@@ -414,6 +423,7 @@ def main():
         'vision_attempts': args.vision_attempts,
         'use_templates': args.use_templates,
         'templates_dir': args.templates_dir,
+        'board_config': args.board_config,
     }
 
     # Create and run app
