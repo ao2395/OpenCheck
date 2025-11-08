@@ -12,6 +12,49 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
+import threading
+
+
+class TimeoutError(Exception):
+    """Custom timeout exception"""
+    pass
+
+
+def timeout_wrapper(func, args=(), kwargs={}, timeout_duration=3):
+    """
+    Execute function with a hard timeout using threading
+
+    Args:
+        func: Function to execute
+        args: Positional arguments
+        kwargs: Keyword arguments
+        timeout_duration: Timeout in seconds
+
+    Returns:
+        Function result or raises TimeoutError
+    """
+    result = [None]
+    exception = [None]
+
+    def target():
+        try:
+            result[0] = func(*args, **kwargs)
+        except Exception as e:
+            exception[0] = e
+
+    thread = threading.Thread(target=target)
+    thread.daemon = True
+    thread.start()
+    thread.join(timeout_duration)
+
+    if thread.is_alive():
+        # Thread is still running - timeout occurred
+        raise TimeoutError(f"Function timed out after {timeout_duration}s")
+
+    if exception[0]:
+        raise exception[0]
+
+    return result[0]
 
 
 class ChessComScraper:
@@ -115,13 +158,24 @@ class ChessComScraper:
             """
 
             try:
-                piece_classes = self.driver.execute_script(js_code)
+                # Use hard timeout wrapper (3 seconds) to prevent hanging
+                piece_classes = timeout_wrapper(
+                    self.driver.execute_script,
+                    args=(js_code,),
+                    timeout_duration=3
+                )
                 find_elapsed = time.time() - find_start
                 print(f"[DEBUG] Found {len(piece_classes)} pieces in {find_elapsed:.3f}s")
+            except TimeoutError as e:
+                find_elapsed = time.time() - find_start
+                print(f"[ERROR] JavaScript execution timed out after {find_elapsed:.3f}s")
+                print("[ERROR] Selenium execute_script is hanging - known issue")
+                print("[ERROR] Recommendation: Use --use-templates instead (99% accurate, no hangs)")
+                return None
             except Exception as e:
                 find_elapsed = time.time() - find_start
                 print(f"[ERROR] JavaScript execution failed after {find_elapsed:.3f}s: {e}")
-                print("[ERROR] Browser may be in bad state, returning None")
+                print("[ERROR] Browser may be in bad state")
                 return None
 
             # If no pieces found, try alternative selectors
