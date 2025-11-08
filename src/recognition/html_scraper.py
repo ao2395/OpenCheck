@@ -9,6 +9,8 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import time
 
 
@@ -42,6 +44,8 @@ class ChessComScraper:
 
         try:
             self.driver = webdriver.Chrome(options=chrome_options)
+            # Disable implicit waits to avoid delays
+            self.driver.implicitly_wait(0)
             print("✓ Browser started successfully")
             return True
         except Exception as e:
@@ -92,10 +96,32 @@ class ChessComScraper:
             str: FEN notation
         """
         try:
+            import time
+            overall_start = time.time()
+
+            # Wait for at least one piece element to be present (with short timeout)
+            print("[DEBUG] Waiting for piece elements to be present...")
+            wait_start = time.time()
+            try:
+                WebDriverWait(self.driver, 2).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, 'div.piece'))
+                )
+                wait_elapsed = time.time() - wait_start
+                print(f"[DEBUG] Wait completed in {wait_elapsed:.3f}s")
+            except Exception as e:
+                wait_elapsed = time.time() - wait_start
+                print(f"[DEBUG] Wait timed out after {wait_elapsed:.3f}s: {e}")
+
             # Find all piece elements
+            find_start = time.time()
+            print("[DEBUG] Finding piece elements...")
             pieces = self.driver.find_elements(By.CSS_SELECTOR, 'div.piece')
+            find_elapsed = time.time() - find_start
+            print(f"[DEBUG] Found {len(pieces)} pieces in {find_elapsed:.3f}s")
 
             # Parse pieces into board representation
+            parse_start = time.time()
+            print(f"[DEBUG] Parsing {len(pieces)} pieces...")
             board_dict = {}
 
             for piece_elem in pieces:
@@ -132,8 +158,18 @@ class ChessComScraper:
 
                         board_dict[square_idx] = piece_char
 
+            parse_elapsed = time.time() - parse_start
+            print(f"[DEBUG] Parsed {len(board_dict)} pieces in {parse_elapsed:.3f}s")
+
             # Convert to FEN
+            fen_start = time.time()
+            print("[DEBUG] Converting to FEN...")
             fen = self._board_dict_to_fen(board_dict)
+            fen_elapsed = time.time() - fen_start
+            print(f"[DEBUG] FEN conversion took {fen_elapsed:.3f}s")
+
+            overall_elapsed = time.time() - overall_start
+            print(f"[DEBUG] ✓ Total time: {overall_elapsed:.3f}s")
 
             return fen
 
