@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from capture.screenshot import ScreenCapture
 from recognition.vision_api import BoardRecognizer
+from recognition.template_matcher import TemplateMatcher
 from engine.model import ChessEngine
 from ui.overlay import MoveOverlay
 from ui.console import ConsoleOutput
@@ -49,6 +50,8 @@ class OpenCheckApp:
             'overlay_position': (100, 100),
             'verbose': True,
             'vision_api': 'gemini',  # 'gemini', 'claude', or 'openai'
+            'use_templates': False,  # Use template matching instead of vision API
+            'templates_dir': 'templates',
         }
 
         # Override with provided config
@@ -85,11 +88,18 @@ class OpenCheckApp:
                 monitor_number=self.config['monitor_number']
             )
 
-            # Board recognizer (Vision API)
+            # Board recognizer (Template Matching or Vision API)
             self._log("Initializing board recognizer...", 'info')
-            self.board_recognizer = BoardRecognizer(
-                prefer=self.config['vision_api']
-            )
+            if self.config['use_templates']:
+                self._log("Using template matching for board recognition", 'info')
+                self.board_recognizer = TemplateMatcher(
+                    templates_dir=self.config['templates_dir']
+                )
+            else:
+                self._log(f"Using {self.config['vision_api']} vision API for board recognition", 'info')
+                self.board_recognizer = BoardRecognizer(
+                    prefer=self.config['vision_api']
+                )
 
             # Chess engine (your trained model)
             model_path = self.config['model_path']
@@ -377,6 +387,19 @@ def main():
         help='Number of vision API attempts (uses most common result, default: 1)'
     )
 
+    parser.add_argument(
+        '--use-templates',
+        action='store_true',
+        help='Use template matching instead of vision API (more accurate for consistent board position)'
+    )
+
+    parser.add_argument(
+        '--templates-dir',
+        type=str,
+        default='templates',
+        help='Directory containing piece templates (default: templates/)'
+    )
+
     args = parser.parse_args()
 
     # Build config from args
@@ -389,6 +412,8 @@ def main():
         'vision_api': args.vision_api,
         'save_screenshots': args.save_screenshots,
         'vision_attempts': args.vision_attempts,
+        'use_templates': args.use_templates,
+        'templates_dir': args.templates_dir,
     }
 
     # Create and run app
