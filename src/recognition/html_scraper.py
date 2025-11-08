@@ -136,9 +136,12 @@ class ChessComScraper:
             print(f"Error scraping board: {e}")
             return None
 
-    def get_fen_from_current_page(self):
+    def get_fen_from_current_page(self, save_html=True):
         """
         Extract FEN from the current chess.com page
+
+        Args:
+            save_html: Save HTML to file for debugging
 
         Returns:
             str: FEN notation
@@ -146,6 +149,18 @@ class ChessComScraper:
         try:
             import time
             overall_start = time.time()
+
+            # Save HTML for debugging
+            if save_html:
+                try:
+                    html = self.driver.page_source
+                    timestamp = time.strftime("%Y%m%d-%H%M%S")
+                    filename = f"debug_html_{timestamp}.html"
+                    with open(filename, 'w', encoding='utf-8') as f:
+                        f.write(html)
+                    print(f"[DEBUG] Saved HTML to {filename}")
+                except Exception as e:
+                    print(f"[DEBUG] Could not save HTML: {e}")
 
             # Use JavaScript to get piece data directly (faster than Selenium's find_elements)
             find_start = time.time()
