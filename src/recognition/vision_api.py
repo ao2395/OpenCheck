@@ -229,19 +229,31 @@ class GeminiVision(VisionAPI):
         """
         prompt = """Analyze this chess board image and provide the position in FEN (Forsyth-Edwards Notation).
 
-IMPORTANT: Respond with ONLY the FEN string, nothing else. No explanations, no additional text.
+CRITICAL REQUIREMENTS:
+1. Each rank (row) MUST have exactly 8 squares total (pieces + empty squares)
+2. Count carefully - verify each rank adds up to 8
+3. Respond with ONLY the FEN string - no explanations
 
-The FEN format is: piece_placement active_color castling en_passant halfmove fullmove
+FEN Format: piece_placement active_color castling en_passant halfmove fullmove
 
-For piece placement:
-- Use uppercase for white pieces (PNBRQK) and lowercase for black (pnbrqk)
-- Numbers represent empty squares
-- Rows are separated by /
-- Start from rank 8 (top) to rank 1 (bottom)
+Piece placement rules:
+- Uppercase for white pieces: P(pawn) N(knight) B(bishop) R(rook) Q(queen) K(king)
+- Lowercase for black pieces: p n b r q k
+- Numbers 1-8 represent consecutive empty squares
+- Ranks separated by /
+- Start from rank 8 (top, black's side) down to rank 1 (bottom, white's side)
 
-Example FEN: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+VERIFICATION CHECKLIST:
+- Each rank between slashes must sum to exactly 8
+- Starting position: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+- Count: r(1) n(1) b(1) q(1) k(1) b(1) n(1) r(1) = 8 ✓
 
-Respond with just the FEN string."""
+Common mistakes to AVOID:
+- Missing pieces (e.g., "rnbqknr" has only 7 pieces - WRONG!)
+- Incorrect empty square counts
+- Wrong piece colors (uppercase vs lowercase)
+
+Double-check your FEN before responding. Output ONLY the FEN string."""
 
         try:
             response = self.model.generate_content([prompt, image])
@@ -319,15 +331,86 @@ class BoardRecognizer:
         try:
             fen = self.vision_api.extract_fen(image)
 
-            # Basic validation
-            if fen and len(fen) > 15:  # Minimum valid FEN length
-                return fen
-            else:
+            if not fen or len(fen) < 15:
                 print(f"Invalid FEN received: {fen}")
+                return None
+
+            # Validate FEN format
+            try:
+                import chess
+                # Try to parse the FEN - this will catch structural errors
+                board = chess.Board(fen)
+                return fen
+            except Exception as e:
+                print(f"FEN validation failed: {e}")
+                print(f"Invalid FEN: {fen}")
+
+                # Try to fix common issues
+                fixed_fen = self._attempt_fen_fix(fen)
+                if fixed_fen:
+                    try:
+                        board = chess.Board(fixed_fen)
+                        print(f"Fixed FEN to: {fixed_fen}")
+                        return fixed_fen
+                    except:
+                        pass
+
                 return None
 
         except Exception as e:
             print(f"Error in board recognition: {e}")
+            return None
+
+    def _attempt_fen_fix(self, fen):
+        """
+        Attempt to fix common FEN errors from vision models
+
+        Args:
+            fen: Potentially invalid FEN string
+
+        Returns:
+            Fixed FEN string or None
+        """
+        try:
+            parts = fen.split()
+            if len(parts) < 1:
+                return None
+
+            position = parts[0]
+            ranks = position.split('/')
+
+            if len(ranks) != 8:
+                return None
+
+            # Check each rank has 8 squares
+            fixed_ranks = []
+            for rank in ranks:
+                # Count pieces and empty squares
+                total = 0
+                for char in rank:
+                    if char.isdigit():
+                        total += int(char)
+                    else:
+                        total += 1
+
+                # If rank is wrong length, skip fixing (too complex)
+                if total != 8:
+                    return None
+
+                fixed_ranks.append(rank)
+
+            # Rebuild FEN with default metadata if missing
+            fixed_position = '/'.join(fixed_ranks)
+
+            if len(parts) >= 6:
+                # Has all parts, just use fixed position
+                return f"{fixed_position} {' '.join(parts[1:])}"
+            else:
+                # Add default metadata: white to move, all castling rights, no en passant
+                return f"{fixed_position} w KQkq - 0 1"
+
+        except Exception as e:
+            print(f"FEN fix attempt failed: {e}")
             return None
 
 
