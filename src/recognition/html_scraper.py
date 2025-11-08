@@ -186,13 +186,14 @@ class ChessComScraper:
         # Note: We could also scrape whose turn it is from the HTML
         return f"{position} w KQkq - 0 1"
 
-    def get_fen_from_image(self, image):
+    def get_fen_from_image(self, image, num_attempts=1):
         """
         Compatibility method - not used for HTML scraping
         This exists so we can swap this in place of vision recognizers
 
         Args:
             image: Not used (compatibility only)
+            num_attempts: Not used (compatibility only)
 
         Returns:
             str: FEN from currently loaded page
