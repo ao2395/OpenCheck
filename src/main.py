@@ -148,11 +148,20 @@ class OpenCheckApp:
             # Step 1: Capture screenshot
             img = self.screen_capture.capture_full_screen()
 
+            # Save screenshot for debugging
+            if self.config.get('save_screenshots', False):
+                from datetime import datetime
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                debug_path = f"debug_screenshot_{timestamp}.png"
+                img.save(debug_path)
+                self._log(f"Saved screenshot to {debug_path}", 'info')
+
             if self.console and self.config['verbose']:
                 self.console.print_capture_info(img.size)
 
             # Step 2: Extract FEN from image
-            fen = self.board_recognizer.get_fen_from_image(img)
+            num_attempts = self.config.get('vision_attempts', 1)
+            fen = self.board_recognizer.get_fen_from_image(img, num_attempts=num_attempts)
 
             if not fen:
                 self._log("Failed to extract FEN from image", 'error')
@@ -355,6 +364,19 @@ def main():
         help='Monitor number to capture (default: 1)'
     )
 
+    parser.add_argument(
+        '--save-screenshots',
+        action='store_true',
+        help='Save screenshots for debugging vision accuracy'
+    )
+
+    parser.add_argument(
+        '--vision-attempts',
+        type=int,
+        default=1,
+        help='Number of vision API attempts (uses most common result, default: 1)'
+    )
+
     args = parser.parse_args()
 
     # Build config from args
@@ -365,6 +387,8 @@ def main():
         'show_overlay': not args.no_overlay,
         'show_console': not args.no_console,
         'vision_api': args.vision_api,
+        'save_screenshots': args.save_screenshots,
+        'vision_attempts': args.vision_attempts,
     }
 
     # Create and run app

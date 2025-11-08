@@ -318,18 +318,39 @@ class BoardRecognizer:
                 "No vision API available. Set GOOGLE_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY"
             )
 
-    def get_fen_from_image(self, image):
+    def get_fen_from_image(self, image, num_attempts=1):
         """
         Extract FEN notation from chess board image
 
         Args:
             image: PIL.Image of chess board
+            num_attempts: Number of attempts to make (uses most common result)
 
         Returns:
             str: FEN notation, or None if recognition failed
         """
-        try:
+        if num_attempts == 1:
             fen = self.vision_api.extract_fen(image)
+        else:
+            # Multiple attempts - use most common result
+            print(f"Attempting FEN extraction {num_attempts} times...")
+            results = []
+            for i in range(num_attempts):
+                fen_attempt = self.vision_api.extract_fen(image)
+                if fen_attempt:
+                    results.append(fen_attempt)
+                    print(f"Attempt {i+1}: {fen_attempt}")
+
+            if not results:
+                return None
+
+            # Find most common FEN
+            from collections import Counter
+            counter = Counter(results)
+            fen = counter.most_common(1)[0][0]
+            print(f"Using most common FEN (appeared {counter[fen]} times): {fen}")
+
+        try:
 
             if not fen or len(fen) < 15:
                 print(f"Invalid FEN received: {fen}")
