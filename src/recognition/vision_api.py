@@ -212,7 +212,7 @@ class GeminiVision(VisionAPI):
         try:
             import google.generativeai as genai
             genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel('gemini-1.5-flash')
+            self.model = genai.GenerativeModel('gemini-pro-vision')
         except ImportError:
             raise ImportError("Install google-generativeai: pip install google-generativeai")
 
