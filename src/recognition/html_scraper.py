@@ -42,10 +42,15 @@ class ChessComScraper:
         chrome_options.add_argument('--disable-dev-shm-usage')
         chrome_options.add_argument('--window-size=1920,1080')
 
+        # Set page load strategy to 'none' to prevent waiting for full page loads
+        chrome_options.page_load_strategy = 'none'
+
         try:
             self.driver = webdriver.Chrome(options=chrome_options)
             # Disable implicit waits to avoid delays
             self.driver.implicitly_wait(0)
+            # Set script timeout to prevent hanging
+            self.driver.set_script_timeout(5)
             print("✓ Browser started successfully")
             return True
         except Exception as e:
@@ -109,9 +114,15 @@ class ChessComScraper:
             return Array.from(pieces).map(p => p.className);
             """
 
-            piece_classes = self.driver.execute_script(js_code)
-            find_elapsed = time.time() - find_start
-            print(f"[DEBUG] Found {len(piece_classes)} pieces in {find_elapsed:.3f}s")
+            try:
+                piece_classes = self.driver.execute_script(js_code)
+                find_elapsed = time.time() - find_start
+                print(f"[DEBUG] Found {len(piece_classes)} pieces in {find_elapsed:.3f}s")
+            except Exception as e:
+                find_elapsed = time.time() - find_start
+                print(f"[ERROR] JavaScript execution failed after {find_elapsed:.3f}s: {e}")
+                print("[ERROR] Browser may be in bad state, returning None")
+                return None
 
             # If no pieces found, try alternative selectors
             if len(piece_classes) == 0:
