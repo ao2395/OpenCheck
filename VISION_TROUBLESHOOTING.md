@@ -4,25 +4,9 @@
 
 If you're getting illegal moves or wrong positions, the vision API is misreading the board.
 
-### Solution 1: Switch to Claude Vision (Recommended)
+**Current Model**: Gemini 1.5 Pro (now default - more accurate than Flash)
 
-Claude Vision is generally more accurate for chess positions than Gemini.
-
-**Steps:**
-
-1. Get an Anthropic API key from https://console.anthropic.com/
-
-2. Add to your `.env` file:
-```bash
-ANTHROPIC_API_KEY=your_key_here
-```
-
-3. Run with Claude Vision:
-```bash
-python src/main.py --vision-api claude --vision-attempts 3
-```
-
-### Solution 2: Improve Gemini Accuracy
+### Solution 1: Improve Gemini Pro Accuracy
 
 **Try image preprocessing (now enabled by default):**
 ```bash
@@ -50,30 +34,47 @@ If full-screen capture includes too much noise:
 2. Edit `src/capture/screenshot.py` to crop to just the board
 3. Example: only capture pixels [100:900, 100:900]
 
+### Solution 2: Switch to Claude Vision (Most Accurate)
+
+If Gemini Pro still has issues, Claude Vision is the most accurate option.
+
+**Steps:**
+
+1. Get an Anthropic API key from https://console.anthropic.com/
+2. Add to `.env`: `ANTHROPIC_API_KEY=your_key_here`
+3. Run: `python src/main.py --vision-api claude --vision-attempts 3`
+
+Note: Claude Vision is more expensive than Gemini.
+
 ### Comparison: Vision APIs
 
-| API | Accuracy | Speed | Cost |
-|-----|----------|-------|------|
-| Claude Vision | ⭐⭐⭐⭐⭐ | Fast | Medium |
-| Gemini Flash | ⭐⭐⭐ | Very Fast | Low |
-| GPT-4 Vision | ⭐⭐⭐⭐ | Medium | High |
+| API | Accuracy | Speed | Cost | Current |
+|-----|----------|-------|------|---------|
+| **Gemini 1.5 Pro** | ⭐⭐⭐⭐ | Medium | Low | ✓ Default |
+| Claude Vision | ⭐⭐⭐⭐⭐ | Fast | Medium | |
+| Gemini 2.0 Flash | ⭐⭐⭐ | Very Fast | Very Low | |
+| GPT-4 Vision | ⭐⭐⭐⭐ | Medium | High | |
 
 ### Debug Mode
 
-Run with full debugging:
+Run with full debugging (using default Gemini Pro):
 ```bash
 python src/main.py \
-  --vision-api claude \
   --vision-attempts 3 \
   --save-screenshots \
   --verbose
 ```
 
 This will:
-- Use Claude Vision (most accurate)
-- Try 3 times per capture
-- Save each screenshot
-- Show detailed logs
+- Use Gemini 1.5 Pro (default)
+- Try 3 times per capture (uses most common result)
+- Save each screenshot for manual inspection
+- Show detailed logs including FEN and legal moves
+
+For maximum accuracy (but higher cost):
+```bash
+python src/main.py --vision-api claude --vision-attempts 3 --save-screenshots
+```
 
 ### Still Not Working?
 
