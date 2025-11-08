@@ -7,8 +7,10 @@ import os
 import sys
 import time
 import threading
+import random
 from pathlib import Path
 from dotenv import load_dotenv
+import chess
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -171,16 +173,62 @@ class OpenCheckApp:
             if self.console and self.config['verbose']:
                 self.console.print_board(fen)
 
-            # Step 3: Predict best move
-            moves = self.chess_engine.predict_move(fen, top_k=1)
+            # Validate FEN before predicting
+            try:
+                board = chess.Board(fen)
+                legal_moves = list(board.legal_moves)
+                self._log(f"Position has {len(legal_moves)} legal moves", 'info')
 
-            if not moves:
-                self._log("No legal moves predicted", 'warning')
+                if len(legal_moves) == 0:
+                    self._log("Position has no legal moves (checkmate or stalemate)", 'warning')
+                    if self.overlay:
+                        self.overlay.show_error("Game over")
+                    return
+            except Exception as e:
+                self._log(f"Invalid FEN from vision API: {e}", 'error')
                 if self.overlay:
-                    self.overlay.show_error("No moves found")
+                    self.overlay.show_error("Invalid board position")
                 return
 
+            # Step 3: Predict best move
+            moves = self.chess_engine.predict_move(fen, top_k=3)
+
+            if not moves:
+                self._log("No legal moves predicted by model", 'warning')
+                # Fallback: show a random legal move
+                if legal_moves:
+                    fallback_move = random.choice(legal_moves).uci()
+                    self._log(f"Using random legal move: {fallback_move}", 'info')
+                    moves = [(fallback_move, 0.0)]
+                else:
+                    if self.overlay:
+                        self.overlay.show_error("No moves found")
+                    return
+
             best_move, confidence = moves[0]
+
+            # Verify the move is actually legal
+            try:
+                move_obj = chess.Move.from_uci(best_move)
+                if move_obj not in board.legal_moves:
+                    self._log(f"Model predicted illegal move: {best_move}", 'error')
+                    # Try next move in the list
+                    for alt_move, alt_conf in moves[1:]:
+                        alt_move_obj = chess.Move.from_uci(alt_move)
+                        if alt_move_obj in board.legal_moves:
+                            self._log(f"Using alternative legal move: {alt_move}", 'info')
+                            best_move, confidence = alt_move, alt_conf
+                            break
+                    else:
+                        self._log("No legal moves in top predictions", 'error')
+                        if self.overlay:
+                            self.overlay.show_error("Model error")
+                        return
+            except Exception as e:
+                self._log(f"Error validating move: {e}", 'error')
+                if self.overlay:
+                    self.overlay.show_error("Invalid move")
+                return
 
             # Calculate duration
             duration_ms = (time.time() - start_time) * 1000
