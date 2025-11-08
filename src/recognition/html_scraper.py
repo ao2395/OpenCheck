@@ -99,45 +99,45 @@ class ChessComScraper:
             import time
             overall_start = time.time()
 
-            # Find all piece elements directly (no wait - should be instant if page is loaded)
+            # Use JavaScript to get piece data directly (faster than Selenium's find_elements)
             find_start = time.time()
-            print("[DEBUG] Finding piece elements...")
-            pieces = self.driver.find_elements(By.CSS_SELECTOR, 'div.piece')
-            find_elapsed = time.time() - find_start
-            print(f"[DEBUG] Found {len(pieces)} pieces in {find_elapsed:.3f}s")
+            print("[DEBUG] Extracting piece data via JavaScript...")
 
-            # If no pieces found, try alternative selectors or report error
-            if len(pieces) == 0:
+            # Execute JavaScript to get all piece elements and their classes
+            js_code = """
+            const pieces = document.querySelectorAll('div.piece');
+            return Array.from(pieces).map(p => p.className);
+            """
+
+            piece_classes = self.driver.execute_script(js_code)
+            find_elapsed = time.time() - find_start
+            print(f"[DEBUG] Found {len(piece_classes)} pieces in {find_elapsed:.3f}s")
+
+            # If no pieces found, try alternative selectors
+            if len(piece_classes) == 0:
                 print("[DEBUG] No pieces found! Checking page state...")
                 print(f"[DEBUG] Current URL: {self.driver.current_url}")
-                print(f"[DEBUG] Page title: {self.driver.title}")
 
                 # Try alternative selectors chess.com might use
-                alt_selectors = [
-                    'div[class*="piece"]',
-                    '.piece',
-                    '[class^="piece-"]',
-                ]
+                alt_js = """
+                const pieces = document.querySelectorAll('div[class*="piece"]');
+                return Array.from(pieces).map(p => p.className);
+                """
+                piece_classes = self.driver.execute_script(alt_js)
+                print(f"[DEBUG] Retry found {len(piece_classes)} pieces")
 
-                for selector in alt_selectors:
-                    alt_pieces = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                    if alt_pieces:
-                        print(f"[DEBUG] Found {len(alt_pieces)} pieces with selector: {selector}")
-                        pieces = alt_pieces
-                        break
-
-                if len(pieces) == 0:
+                if len(piece_classes) == 0:
                     print("[ERROR] Could not find any piece elements on the page!")
                     print("[ERROR] Chess.com may have changed their HTML structure")
                     return None
 
             # Parse pieces into board representation
             parse_start = time.time()
-            print(f"[DEBUG] Parsing {len(pieces)} pieces...")
+            print(f"[DEBUG] Parsing {len(piece_classes)} pieces...")
             board_dict = {}
 
-            for piece_elem in pieces:
-                classes = piece_elem.get_attribute('class').split()
+            for class_string in piece_classes:
+                classes = class_string.split()
 
                 # Extract piece type and square
                 piece_info = None
